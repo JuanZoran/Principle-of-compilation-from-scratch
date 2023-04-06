@@ -2,7 +2,9 @@ add_rules("mode.debug", "mode.release")
 
 target("parser")
     set_kind("binary")
+    add_includedirs("include")
     add_files("src/*.cpp")
+    set_runargs('$(projectdir)/test/test.txt')
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --
