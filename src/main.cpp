@@ -5,6 +5,7 @@
 #include <vector>
 
 using namespace std;
+using namespace Zoran;
 
 bool isalpha(char ch)
 {
@@ -24,6 +25,12 @@ enum state {
     IntLiteral,
 };
 
+void initProcess(char ch);
+void idProcess(char ch);
+void gtProcess(char ch);
+void geProcess(char ch);
+void intLiteralProcess(char ch);
+
 vector<string> Identifiers;
 vector<string> Operators;
 vector<string> Separators;
@@ -32,91 +39,26 @@ vector<string> Literals;
 state current = Init;
 string token;
 
-void init_state()
+/* NOTE :
+    标识符
+    关键字
+    比较运算符
+    分隔符
+    字面量
+*/
+
+bool isSeparator(char ch)
 {
-    current = Init;
-    token.clear();
-}
-
-void initProcess(char ch)
-{
-    if (ch == ' ' || ch == '\n') { return; }
-    token += ch;
-    if (isalpha(ch))
-        current = Id;
-    else if (ch == '>')
-        current = GT;
-
-    else if (ch == '=')
-        current = GE;
-
-    else if (isdigit(ch))
-        current = IntLiteral;
-    else
-    // assert(false);
-    {
-        cout << "check input string" << endl;
-        exit(1);
-    }
-}
-
-void idProcess(char ch)
-{
-    if (isalpha(ch)) {
-        token += ch;
-        return;
-    }
-
-    Identifiers.push_back(token);
-    init_state();
-    initProcess(ch);
-}
-
-void gtProcess(char ch)
-{
-    if (ch == '=') { token += ch; }
-    Operators.push_back(token);
-    init_state();
-
-    if (ch != '=') initProcess(ch);
-}
-
-void geProcess(char ch)
-{
-    if (ch == '=') { token += ch; }
-    Operators.push_back(token);
-    init_state();
-
-
-    if (ch != '=') initProcess(ch);
-}
-
-void intLiteralProcess(char ch)
-{
-    if (isdigit(ch)) {
-        token += ch;
-        return;
-    }
-
-    Literals.push_back(token);
-    init_state();
-    initProcess(ch);
+    return ch == '\n' || ch == ' ' || ch == '\t';
 }
 
 void process(char ch)
 {
-    if (ch < 0) return;
-    /*
-        标识符
-        关键字
-        比较运算符
-        分隔符
-        字面量
-    */
+    if (ch == char(255)) { return; }
+
+    if (current == Init) { initProcess(ch); }
+
     switch (current) {
-        case Init:
-            initProcess(ch);
-            break;
         case Id:
             idProcess(ch);
             break;
@@ -129,7 +71,82 @@ void process(char ch)
         case IntLiteral:
             intLiteralProcess(ch);
             break;
+        default:
+            break;
     }
+}
+
+void initProcess(char ch)
+{
+    if (isSeparator(ch)) { return; }
+
+    if (isalpha(ch)) { current = Id; }
+    else if (ch == '>') {
+        current = GT;
+    }
+
+    else if (ch == '=') {
+        current = GE;
+    }
+
+    else if (isdigit(ch)) {
+        current = IntLiteral;
+    }
+    else {
+        cout << "check input string:" << ch << endl;
+        exit(1);
+    }
+}
+
+void init_state(char ch = -1)
+{
+    current = Init;
+    token.clear();
+    initProcess(ch);
+    if (ch > 0) { process(ch); }
+}
+
+void idProcess(char ch)
+{
+    if (isalpha(ch)) {
+        token += ch;
+        return;
+    }
+
+    Identifiers.push_back(token);
+    init_state(ch);
+}
+
+void gtProcess(char ch)
+{
+    if (ch == '>' || ch == '=') {
+        token += ch;
+        return;
+    }
+
+    Operators.push_back(token);
+    init_state(ch);
+}
+
+void geProcess(char ch)
+{
+    if (ch == '=') {
+        token += ch;
+        return;
+    }
+    Operators.push_back(token);
+    init_state(ch);
+}
+
+void intLiteralProcess(char ch)
+{
+    if (isdigit(ch)) {
+        token += ch;
+        return;
+    }
+
+    Literals.push_back(token);
+    init_state(ch);
 }
 
 int main(int argc, char* argv[])
@@ -138,23 +155,15 @@ int main(int argc, char* argv[])
     ifstream ifs(filename);
     assert(ifs.is_open());
 
-
     while (!ifs.eof())
         process(ifs.get());
-
-
-    auto line = [](auto obj, string color = Zoran::Dgreen) {
-        cout << color << obj << Zoran::Endl;
-    };
-
-
 
     auto sep = "======================";
     auto indent = "    ";
 
     auto print = [&](auto& vec, string name) {
         line(sep);
-        line(name + ":", Zoran::Purpor);
+        line(name + ":", Purpor);
         for (auto& item : vec) {
             line(indent + item, Zoran::Green);
         }
