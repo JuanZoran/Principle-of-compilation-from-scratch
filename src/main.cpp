@@ -7,13 +7,11 @@
 using namespace std;
 using namespace Zoran;
 
-bool isalpha(char ch)
-{
+bool isalpha(char ch) {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 }
 
-bool isdigit(char ch)
-{
+bool isdigit(char ch) {
     return ch >= '0' && ch <= '9';
 }
 
@@ -25,6 +23,12 @@ enum state {
     IntLiteral,
 };
 
+constexpr auto keyword = {
+    "int",
+    "char",
+};
+
+
 void initProcess(char ch);
 void idProcess(char ch);
 void gtProcess(char ch);
@@ -33,8 +37,8 @@ void intLiteralProcess(char ch);
 
 vector<string> Identifiers;
 vector<string> Operators;
-vector<string> Separators;
 vector<string> Literals;
+vector<string> Keywords;
 
 state current = Init;
 string token;
@@ -47,13 +51,11 @@ string token;
     字面量
 */
 
-bool isSeparator(char ch)
-{
+bool isSeparator(char ch) {
     return ch == '\n' || ch == ' ' || ch == '\t';
 }
 
-void process(char ch)
-{
+void process(char ch) {
     if (ch == char(255)) { return; }
 
     if (current == Init) { initProcess(ch); }
@@ -76,38 +78,29 @@ void process(char ch)
     }
 }
 
-void initProcess(char ch)
-{
+void initProcess(char ch) {
     if (isSeparator(ch)) { return; }
 
     if (isalpha(ch)) { current = Id; }
-    else if (ch == '>') {
-        current = GT;
-    }
+    else if (ch == '>') { current = GT; }
 
-    else if (ch == '=') {
-        current = GE;
-    }
+    else if (ch == '=') { current = GE; }
 
-    else if (isdigit(ch)) {
-        current = IntLiteral;
-    }
+    else if (isdigit(ch)) { current = IntLiteral; }
     else {
         cout << "check input string:" << ch << endl;
         exit(1);
     }
 }
 
-void init_state(char ch = -1)
-{
+void init_state(char ch = -1) {
     current = Init;
     token.clear();
     initProcess(ch);
     if (ch > 0) { process(ch); }
 }
 
-void idProcess(char ch)
-{
+void idProcess(char ch) {
     if (isalpha(ch)) {
         token += ch;
         return;
@@ -117,8 +110,7 @@ void idProcess(char ch)
     init_state(ch);
 }
 
-void gtProcess(char ch)
-{
+void gtProcess(char ch) {
     if (ch == '>' || ch == '=') {
         token += ch;
         return;
@@ -128,8 +120,7 @@ void gtProcess(char ch)
     init_state(ch);
 }
 
-void geProcess(char ch)
-{
+void geProcess(char ch) {
     if (ch == '=') {
         token += ch;
         return;
@@ -138,8 +129,7 @@ void geProcess(char ch)
     init_state(ch);
 }
 
-void intLiteralProcess(char ch)
-{
+void intLiteralProcess(char ch) {
     if (isdigit(ch)) {
         token += ch;
         return;
@@ -149,8 +139,18 @@ void intLiteralProcess(char ch)
     init_state(ch);
 }
 
-int main(int argc, char* argv[])
-{
+void keywordProcess() {
+    for (auto i = Identifiers.begin(); i != Identifiers.end(); i++) {
+        for (auto& word : keyword) {
+            if (*i == word) {
+                Keywords.push_back(*i);
+                Identifiers.erase(i);
+            }
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
     string filename = argv[1];
     ifstream ifs(filename);
     assert(ifs.is_open());
@@ -158,6 +158,7 @@ int main(int argc, char* argv[])
     while (!ifs.eof())
         process(ifs.get());
 
+    keywordProcess();
     auto sep = "======================";
     auto indent = "    ";
 
@@ -173,8 +174,8 @@ int main(int argc, char* argv[])
     // clang-format off
     print(Identifiers , "Identifiers");
     print(Operators   , "Operators");
-    print(Separators  , "Separators");
     print(Literals    , "Literals");
+    print(Keywords    , "Keywords");
 
     return 0;
 }
