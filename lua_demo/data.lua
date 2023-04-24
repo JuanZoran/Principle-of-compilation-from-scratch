@@ -2,7 +2,7 @@ local new = {}
 
 new.stack = (function()
     ---@class stack
-    ---@field size number
+    ---@field size integer
     ---@field [integer] any
     local mt = {
         ---Pop the top element of the stack
@@ -17,14 +17,12 @@ new.stack = (function()
             self.size = size - 1
             return value
         end,
-
         ---Peek the top element of the stack
         ---@param self stack
         ---@return any # The top element
         top = function(self)
             return self[self.size]
         end,
-
         ---Push an element into the stack
         ---@param self stack
         ---@param value any _ The element to push
@@ -32,14 +30,12 @@ new.stack = (function()
             self.size = self.size + 1
             self[self.size] = value
         end,
-
         ---Check if the stack is empty
         ---@param self stack
         ---@return boolean _ True if the stack is empty
         empty = function(self)
             return self.size == 0
         end,
-
         ---Clear the stack
         ---@param self stack
         clear = function(self)
@@ -60,7 +56,6 @@ new.stack = (function()
     end
 end)()
 
-
 new.queue = (function()
     ---@class queue
     ---@field begin integer _ The index of the first element
@@ -79,21 +74,18 @@ new.queue = (function()
             self.begin  = begin + 1
             return value
         end,
-
         ---Peek the first element of the queue
         ---@param self queue
         ---@return any _ The first element
         front = function(self)
             return self[self.begin]
         end,
-
         ---Peek the last element of the queue
         ---@param self queue
         ---@return any _ The last element
         back = function(self)
             return self[self.size]
         end,
-
         ---Push an element into the queue
         ---@param self queue
         ---@param value any The element to Push
@@ -101,7 +93,6 @@ new.queue = (function()
             self.size = self.size + 1
             self[self.size] = value
         end,
-
         ---Check if the queue is empty
         empty = function(self)
             return self.begin - 1 == self.size
@@ -118,7 +109,6 @@ new.queue = (function()
     end
 end)()
 
-
 new.state = (function()
     local index = 0
 
@@ -134,24 +124,22 @@ new.state = (function()
         add_edge = function(self, state)
             self[#self + 1] = state
         end,
-
         ---Set the character that the state accepts
         ---@param self state
         ---@param char string
         set_accept = function(self, char)
             self.char = char
         end,
-
         ---Get transiton string for digraph
         ---@param self state
         ---@param result queue? the result for the transition
         get_transition = function(self, result, visited)
             visited = visited or {}
 
-            if visited[self] then
+            if visited[self.index] then
                 return
             else
-                visited[self] = true
+                visited[self.index] = true
             end
 
             result = result or new.queue()
@@ -188,7 +176,6 @@ end)()
 new.nfa = (function()
     local epsilon = 'ε'
 
-
     ---@class nfa
     ---@field start state The start state
     ---@field final state The final state
@@ -217,8 +204,6 @@ new.nfa = (function()
 
             return self
         end,
-
-
         ---Concat the nfa with another nfa
         ---@param self nfa
         ---@param other nfa
@@ -231,7 +216,6 @@ new.nfa = (function()
             other.final = self.final
             return other
         end,
-
         ---Closure the nfa
         ---@param self nfa
         closure = function(self)
@@ -252,7 +236,6 @@ new.nfa = (function()
 
             return self
         end,
-
         ---Return the string of dot language that represents the nfa
         ---@param self nfa
         ---@return string
@@ -264,8 +247,8 @@ new.nfa = (function()
 
             result:push 'digraph {'
             result:push 'rankdir = LR'
-            -- NOTE : special node style
 
+            -- NOTE : special node style
             -- result:push 'edge [color=green]'
             -- result:push(self.start.index .. ' [color=yellow]')
             -- result:push(self.final.index .. ' [color=green]')
@@ -276,6 +259,13 @@ new.nfa = (function()
             result:push '```'
             return table.concat(result, '\n')
         end,
+        ---Convert Nfa to Dfa
+        ---@param self nfa
+        to_dfa = function(self)
+            -- TODO :
+            --1.遍历所有的边
+            local all_states = {}
+        end,
     }
 
 
@@ -285,8 +275,7 @@ new.nfa = (function()
     ---@param char string
     ---@return nfa
     return function(char)
-        local state2 = new.state {
-        }
+        local state2 = new.state {}
 
         local state1 = new.state {
             char = char,
@@ -297,6 +286,21 @@ new.nfa = (function()
             start = state1,
             final = state2,
         }, mt)
+    end
+end)()
+
+new.dfa = (function()
+    ---@class dfa
+    local mt = {
+
+    }
+    mt.__index = mt
+
+    ---Nfa constructor
+    ---@param origin nfa
+    ---@return dfa
+    return function(origin)
+        return setmetatable({}, mt)
     end
 end)()
 

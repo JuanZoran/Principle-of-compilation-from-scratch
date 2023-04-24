@@ -9,6 +9,9 @@ local priority = {
     ['*'] = 4,
 }
 
+
+--- TODO : convert this function to a method of nfa
+
 ---Do pre-process on regular expression
 ---@param str string
 ---@return queue
@@ -27,20 +30,13 @@ local pre_process = function(str)
 
         if q:empty() then
             assert((char == '(' or not_operator), 'Invalid regular expression')
-            q:push(char)
-        else
-            if (char == '(' or not_operator) and should_concat() then
-                q:push(concat_operator)
-            end
 
-            q:push(char)
+        elseif (char == '(' or not_operator) and should_concat() then
+            q:push(concat_operator)
         end
-    end
 
-    -- for k, v in pairs(q) do
-    --     print(k, v)
-    -- end
-    -- print('================')
+        q:push(char)
+    end
 
     -- INFO : To PostFix
     local st = new.stack()
@@ -91,7 +87,6 @@ local function toNFA(postfix_queue)
         ['*'] = function()
             st:top():closure()
         end,
-
         ['|'] = function()
             local nfa1 = st:pop()
             local nfa2 = st:pop()
@@ -125,19 +120,17 @@ end
 -- Convert Minimized DFA into DFA table
 
 
+
+io.write(green(('请输入正则表达式 : ')))
 local RE = io.read()
+
 -- local q = pre_process(RE)
 print '- 输入字符串 :'
-print ''
 print(RE)
+print ''
 local preprocess = pre_process(RE)
 print '- 预处理并转成后缀表达式 :'
-print ''
 print(table.concat(preprocess))
-print ''
-print ''
-print '=========================='
-print ''
 print ''
 local nfa = toNFA(preprocess)
 print '- 构建得到NFA :'
