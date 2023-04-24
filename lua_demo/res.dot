@@ -1,0 +1,11 @@
+// Start State: 3
+// Final State: 4
+digraph {
+rankdir = LR
+3 -> 1 [label="ε"]
+1 -> 2 [label="b"]
+2 -> 4 [label="ε"]
+3 -> 1 [label="ε"]
+1 -> 2 [label="a"]
+2 -> 4 [label="ε"]
+}
