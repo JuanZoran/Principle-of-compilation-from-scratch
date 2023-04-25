@@ -1,181 +1,101 @@
-#include <cassert>
-#include <color.h>
-#include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
+#include <stack>
+#include <string>
 #include <vector>
 
 using namespace std;
-using namespace Zoran;
 
-bool isalpha(char ch) {
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
-}
+constexpr char epsilon = -1;
 
-bool isdigit(char ch) {
-    return ch >= '0' && ch <= '9';
-}
+class NFA
+{
+public:
+    int num_states;
+    int start_state;
+    set<int> accept_states;
+    map<pair<int, char>, set<int>> transitions;
+    map<pair<int, char>, set<int>> epsilon_transitions;
 
-enum state {
-    Init,
-    Id,
-    GT,
-    GE,
-    IntLiteral,
+    NFA():
+        num_states(0),
+        start_state(-1) { }
+
+    int add_state() {
+        int new_state = num_states++;
+        return new_state;
+    }
+
+    void add_transition(int from, char input, int to) {
+        transitions[make_pair(from, input)].insert(to);
+    }
+
+    void add_epsilon_transition(int from, int to) {
+        epsilon_transitions[make_pair(from, epsilon)].insert(to);
+    }
 };
 
-constexpr auto keyword = {
-    "int",
-    "char",
-};
+NFA construct_NFA_from_postfix(const string& postfix) {
+    NFA nfa;
+    stack<pair<int, int>> state_stack;
 
+    for (char c : postfix) {
+        if (islower(c)) {
+            int start = nfa.add_state();
+            int end = nfa.add_state();
+            nfa.add_transition(start, c, end);
+            state_stack.push({ start, end });
+        }
+        else {
+            if (c == '*') {
+                int old_start, old_end;
+                tie(old_start, old_end) = state_stack.top();
+                state_stack.pop();
 
-void initProcess(char ch);
-void idProcess(char ch);
-void gtProcess(char ch);
-void geProcess(char ch);
-void intLiteralProcess(char ch);
+                int new_start = nfa.add_state();
+                int new_end = nfa.add_state();
+                nfa.add_epsilon_transition(new_start, new_end);
+                nfa.add_epsilon_transition(new_start, old_start);
+                nfa.add_epsilon_transition(old_end, new_end);
+                nfa.add_epsilon_transition(old_end, old_start);
+                state_stack.push({ new_start, new_end });
+            }
+            else if (c == '.') {
+                int start2, end2, start1, end1;
+                tie(start2, end2) = state_stack.top();
+                state_stack.pop();
+                tie(start1, end1) = state_stack.top();
+                state_stack.pop();
 
-vector<string> Identifiers;
-vector<string> Operators;
-vector<string> Literals;
-vector<string> Keywords;
+                nfa.add_epsilon_transition(end1, start2);
+                state_stack.push({ start1, end2 });
+            }
+            else if (c == '|') {
+                int start2, end2, start1, end1;
+                tie(start2, end2) = state_stack.top();
+                state_stack.pop();
+                tie(start1, end1) = state_stack.top();
+                state_stack.pop();
 
-state current = Init;
-string token;
-
-/* NOTE :
-    标识符
-    关键字
-    比较运算符
-    分隔符
-    字面量
-*/
-
-bool isSeparator(char ch) {
-    return ch == '\n' || ch == ' ' || ch == '\t';
-}
-
-void process(char ch) {
-    if (ch == char(255)) { return; }
-
-    if (current == Init) { initProcess(ch); }
-
-    switch (current) {
-        case Id:
-            idProcess(ch);
-            break;
-        case GT:
-            gtProcess(ch);
-            break;
-        case GE:
-            geProcess(ch);
-            break;
-        case IntLiteral:
-            intLiteralProcess(ch);
-            break;
-        default:
-            break;
-    }
-}
-
-void initProcess(char ch) {
-    if (isSeparator(ch)) { return; }
-
-    if (isalpha(ch)) { current = Id; }
-    else if (ch == '>') { current = GT; }
-
-    else if (ch == '=') { current = GE; }
-
-    else if (isdigit(ch)) { current = IntLiteral; }
-    else {
-        cout << "check input string:" << ch << endl;
-        exit(1);
-    }
-}
-
-void init_state(char ch = -1) {
-    current = Init;
-    token.clear();
-    initProcess(ch);
-    if (ch > 0) { process(ch); }
-}
-
-void idProcess(char ch) {
-    if (isalpha(ch)) {
-        token += ch;
-        return;
-    }
-
-    Identifiers.push_back(token);
-    init_state(ch);
-}
-
-void gtProcess(char ch) {
-    if (ch == '>' || ch == '=') {
-        token += ch;
-        return;
-    }
-
-    Operators.push_back(token);
-    init_state(ch);
-}
-
-void geProcess(char ch) {
-    if (ch == '=') {
-        token += ch;
-        return;
-    }
-    Operators.push_back(token);
-    init_state(ch);
-}
-
-void intLiteralProcess(char ch) {
-    if (isdigit(ch)) {
-        token += ch;
-        return;
-    }
-
-    Literals.push_back(token);
-    init_state(ch);
-}
-
-void keywordProcess() {
-    for (auto i = Identifiers.begin(); i != Identifiers.end(); i++) {
-        for (auto& word : keyword) {
-            if (*i == word) {
-                Keywords.push_back(*i);
-                Identifiers.erase(i);
+                int new_start = nfa.add_state();
+                int new_end = nfa.add_state();
+                nfa.add_epsilon_transition(new_start, start1);
+                nfa.add_epsilon_transition(new_start, start2);
+                nfa.add_epsilon_transition(end1, new_end);
+                nfa.add_epsilon_transition(end2, new_end);
+                state_stack.push({ new_start, new_end });
             }
         }
     }
+
+    nfa.start_state = state_stack.top().first;
+    nfa.accept_states.insert(state_stack.top().second);
+    return nfa;
 }
 
-int main(int argc, char* argv[]) {
-    string filename = argv[1];
-    ifstream ifs(filename);
-    assert(ifs.is_open());
-
-    while (!ifs.eof())
-        process(ifs.get());
-
-    keywordProcess();
-    auto sep = "======================";
-    auto indent = "    ";
-
-    auto print = [&](auto& vec, string name) {
-        line(sep);
-        line(name + ":", Purpor);
-        for (auto& item : vec) {
-            line(indent + item, Zoran::Green);
-        }
-    };
-    line("");
-
-    // clang-format off
-    print(Identifiers , "Identifiers");
-    print(Operators   , "Operators");
-    print(Literals    , "Literals");
-    print(Keywords    , "Keywords");
-
-    return 0;
+int main() {
+    string postfix = "ab.c*|"; // Corresponds to the regex (a|b*)c
+    NFA nfa = construct_NFA_from_postfix(postfix);
+    // NFA is now constructed and can be used for further processing (e.g., run on input strings)
 }

@@ -1,9 +1,8 @@
 local new = {}
 
 new.stack = (function()
-    ---@class stack
+    ---@class stack<T>: { [integer]: T}
     ---@field size integer
-    ---@field [integer] any
     local mt = {
         ---Pop the top element of the stack
         ---@param self stack
@@ -17,12 +16,14 @@ new.stack = (function()
             self.size = size - 1
             return value
         end,
+
         ---Peek the top element of the stack
         ---@param self stack
         ---@return any # The top element
         top = function(self)
             return self[self.size]
         end,
+
         ---Push an element into the stack
         ---@param self stack
         ---@param value any _ The element to push
@@ -30,12 +31,14 @@ new.stack = (function()
             self.size = self.size + 1
             self[self.size] = value
         end,
+
         ---Check if the stack is empty
         ---@param self stack
-        ---@return boolean _ True if the stack is empty
+        ---@return boolean @True if the stack is empty
         empty = function(self)
             return self.size == 0
         end,
+
         ---Clear the stack
         ---@param self stack
         clear = function(self)
@@ -57,14 +60,13 @@ new.stack = (function()
 end)()
 
 new.queue = (function()
-    ---@class queue
+    ---@class queue<T>: {[integer]: T}
     ---@field begin integer _ The index of the first element
     ---@field size integer _ The size of the queue
-    ---@field [integer] any _ The elements
     local mt = {
         ---Pop the first element of the queue
         ---@param self queue
-        ---@return any _ The first element
+        ---@return `T` @ The first element
         pop = function(self)
             assert(not self:empty(), 'Queue is empty')
             local begin = self.begin
@@ -76,23 +78,24 @@ new.queue = (function()
         end,
         ---Peek the first element of the queue
         ---@param self queue
-        ---@return any _ The first element
+        ---@return `T` # The first element
         front = function(self)
             return self[self.begin]
         end,
         ---Peek the last element of the queue
         ---@param self queue
-        ---@return any _ The last element
+        ---@return `T` @ The last element
         back = function(self)
             return self[self.size]
         end,
         ---Push an element into the queue
         ---@param self queue
-        ---@param value any The element to Push
+        ---@param value `T` The element to Push
         push = function(self, value)
             self.size = self.size + 1
             self[self.size] = value
         end,
+
         ---Check if the queue is empty
         empty = function(self)
             return self.begin - 1 == self.size
@@ -101,6 +104,7 @@ new.queue = (function()
     mt.__index = mt
 
     ---Queue constructor
+    ---@return queue
     return function()
         return setmetatable({
             begin = 1,
@@ -109,185 +113,7 @@ new.queue = (function()
     end
 end)()
 
-new.state = (function()
-    local index = 0
 
-    ---@class state
-    ---@field char string? The character that the state accepts
-    ---@field index integer The index of the state
-    ---@field [1] state? The first next state
-    ---@field [2] state? The second next state
-    local mt = {
-        ---Add an edge to the state
-        ---@param self state
-        ---@param state state
-        add_edge = function(self, state)
-            self[#self + 1] = state
-        end,
-        ---Set the character that the state accepts
-        ---@param self state
-        ---@param char string
-        set_accept = function(self, char)
-            self.char = char
-        end,
-        ---Get transiton string for digraph
-        ---@param self state
-        ---@param result queue? the result for the transition
-        get_transition = function(self, result, visited)
-            visited = visited or {}
-
-            if visited[self.index] then
-                return
-            else
-                visited[self.index] = true
-            end
-
-            result = result or new.queue()
-            for i = 1, #self do
-                result:push(string.format('%s -> %s [label="%s"]', self.index, self[i].index, self.char))
-                self[i]:get_transition(result, visited)
-            end
-
-            return table.concat(result)
-        end,
-    }
-    mt.__index = mt
-
-
-    ---@param opts { start: boolean?, final: boolean?, [1]: state?, [2]: state?, char: string?}
-    ---@return state
-    return function(opts)
-        if type(opts) == 'string' then
-            opts = {
-                char = opts,
-            }
-        end
-        index = index + 1
-
-        return setmetatable({
-            char = opts.char,
-            index = index,
-            [1] = opts[1],
-            [2] = opts[2],
-        }, mt)
-    end
-end)()
-
-new.nfa = (function()
-    local epsilon = 'ε'
-
-    ---@class nfa
-    ---@field start state The start state
-    ---@field final state The final state
-    local mt = {
-        ---Union the nfa with another nfa
-        ---@param self nfa
-        ---@param other nfa
-        union = function(self, other)
-            local start = new.state {
-                char = epsilon,
-                [1]  = self.start,
-                [2]  = other.start,
-            }
-
-            local final = new.state {
-            }
-
-            self.final:add_edge(final)
-            self.final:set_accept(epsilon)
-
-            other.final:add_edge(final)
-            other.final:set_accept(epsilon)
-
-            self.start = start
-            self.final = final
-
-            return self
-        end,
-        ---Concat the nfa with another nfa
-        ---@param self nfa
-        ---@param other nfa
-        concat = function(self, other)
-            --- INFO :as the stack data structure, so the other should be the first one
-            local final = other.final
-            final:add_edge(self.start)
-            final:set_accept(epsilon)
-
-            other.final = self.final
-            return other
-        end,
-        ---Closure the nfa
-        ---@param self nfa
-        closure = function(self)
-            local final = new.state {}
-
-            local start = new.state {
-                char = epsilon,
-                [1] = self.start,
-                [2] = final,
-            }
-
-            self.final:add_edge(self.start)
-            self.final:add_edge(final)
-            self.final:set_accept(epsilon)
-
-            self.start = start
-            self.final = final
-
-            return self
-        end,
-        ---Return the string of dot language that represents the nfa
-        ---@param self nfa
-        ---@return string
-        to_digraph = function(self)
-            local result = new.queue()
-            result:push '```dot'
-            result:push('// Start State: ' .. self.start.index)
-            result:push('// Final State: ' .. self.final.index)
-
-            result:push 'digraph {'
-            result:push 'rankdir = LR'
-
-            -- NOTE : special node style
-            -- result:push 'edge [color=green]'
-            -- result:push(self.start.index .. ' [color=yellow]')
-            -- result:push(self.final.index .. ' [color=green]')
-
-
-            self.start:get_transition(result)
-            result:push '}'
-            result:push '```'
-            return table.concat(result, '\n')
-        end,
-        ---Convert Nfa to Dfa
-        ---@param self nfa
-        to_dfa = function(self)
-            -- TODO :
-            --1.遍历所有的边
-            local all_states = {}
-        end,
-    }
-
-
-    mt.__index = mt
-
-    ---Nfa constructor
-    ---@param char string
-    ---@return nfa
-    return function(char)
-        local state2 = new.state {}
-
-        local state1 = new.state {
-            char = char,
-            [1] = state2,
-        }
-
-        return setmetatable({
-            start = state1,
-            final = state2,
-        }, mt)
-    end
-end)()
 
 new.dfa = (function()
     ---@class dfa
@@ -304,5 +130,275 @@ new.dfa = (function()
     end
 end)()
 
+new.nfa = (function()
+    ---@class nfa
+    ---@field start integer The start state
+    ---@field final integer The final state
+    ---@field transitions table<integer, table<string, integer>> The transitions table
+    ---@field size integer The state count of the nfa
+    local mt = {
+        ---Add a transition to the nfa
+        ---@param self nfa
+        ---@param from integer
+        ---@param to integer
+        ---@param char string @ The char of the transition
+        add_transition = function(self, from, to, char)
+            assert(from <= self.size and to <= self.size, 'Invalid state')
+
+            local transitions = self.transitions
+            transitions[from][char] = to
+        end,
+
+        ---Add a state to the nfa
+        ---@param self nfa
+        ---@return integer @ The index of the new state
+        new_state = function(self)
+            self.size = self.size + 1
+            self.transitions[self.size] = {}
+            return self.size
+        end,
+
+
+        ---Return the string of dot language that represents the nfa
+        ---@param self nfa
+        ---@return string
+        to_digraph = function(self)
+            local result = new.queue()
+            result:push '```dot'
+            result:push('// Start State: ' .. self.start)
+            result:push('// Final State: ' .. self.final)
+
+            result:push 'digraph {'
+            result:push 'rankdir = LR'
+
+            -- NOTE : special node style
+            -- result:push 'edge [color=green]'
+            -- result:push(self.start.index .. ' [color=yellow]')
+            -- result:push(self.final.index .. ' [color=green, peripheries=2]')
+            result:push(self.final .. ' [peripheries=2]')
+
+            for from, tos in ipairs(self.transitions) do
+                for char, to in pairs(tos) do
+                    result:push(from .. ' -> ' .. to .. ' [label="' .. char .. '"]')
+                end
+            end
+
+            result:push '}'
+            result:push '```'
+
+            return table.concat(result, '\n')
+        end,
+    }
+
+
+    mt.__index = mt
+
+    ---Nfa constructor
+    ---@return nfa
+    return function()
+        return setmetatable({
+            size = 0,
+            start = 0,
+            final = 0,
+            transitions = {},
+        }, mt)
+    end
+end)()
+
+
+-- INFO : this version build a nfa via build lots of states tree
+-- new.nfa = (function()
+--     ---@class nfa
+--     ---@field start state The start state
+--     ---@field final state The final state
+--     local mt = {
+--         ---Union the nfa with another nfa
+--         ---@param self nfa
+--         ---@param other nfa
+--         union = function(self, other)
+--             local start = new.state {
+--                 char = epsilon,
+--                 [1]  = self.start,
+--                 [2]  = other.start,
+--             }
+
+--             local final = new.state {
+--             }
+
+--             self.final:add_edge(final)
+--             self.final.char = epsilon
+
+--             other.final:add_edge(final)
+--             other.final.char = epsilon
+
+--             self.start = start
+--             self.final = final
+
+--             return self
+--         end,
+--         ---Concat the nfa with another nfa
+--         ---@param self nfa
+--         ---@param other nfa
+--         concat = function(self, other)
+--             --- INFO :as the stack data structure, so the other should be the first one
+--             local final = other.final
+--             final:add_edge(self.start)
+--             final.char = epsilon
+
+--             other.final = self.final
+--             return other
+--         end,
+--         ---Closure the nfa
+--         ---@param self nfa
+--         closure = function(self)
+--             local final = new.state {}
+
+--             local start = new.state {
+--                 char = epsilon,
+--                 [1] = self.start,
+--                 [2] = final,
+--             }
+
+--             self.final:add_edge(self.start)
+--             self.final:add_edge(final)
+--             self.final.char = epsilon
+
+--             self.start = start
+--             self.final = final
+
+--             return self
+--         end,
+--         ---Return the string of dot language that represents the nfa
+--         ---@param self nfa
+--         ---@return string
+--         to_digraph = function(self)
+--             local result = new.queue()
+--             result:push '```dot'
+--             result:push('// Start State: ' .. self.start.index)
+--             result:push('// Final State: ' .. self.final.index)
+
+--             result:push 'digraph {'
+--             result:push 'rankdir = LR'
+
+--             -- NOTE : special node style
+--             -- result:push 'edge [color=green]'
+--             -- result:push(self.start.index .. ' [color=yellow]')
+--             -- result:push(self.final.index .. ' [color=green, peripheries=2]')
+--             result:push(self.final.index .. ' [peripheries=2]')
+
+
+--             self.start:get_transition(result)
+--             result:push '}'
+--             result:push '```'
+--             return table.concat(result, '\n')
+--         end,
+--         ---Convert Nfa to Dfa
+--         ---@param self nfa
+--         to_dfa = function(self)
+--             -- TODO :
+--             --1.遍历所有的边
+--             local init_state = self.start:get_epsilon()
+--             local worklist = new.stack()
+
+--             while not worklist:empty() do
+--                 local state = worklist:pop()
+
+--             end
+--         end,
+--     }
+
+
+--     mt.__index = mt
+
+--     ---Nfa constructor
+--     ---@param char string
+--     ---@return nfa
+--     return function(char)
+--         local state2 = new.state {}
+
+--         local state1 = new.state {
+--             char = char,
+--             [1] = state2,
+--         }
+
+--         return setmetatable({
+--             start = state1,
+--             final = state2,
+--         }, mt)
+--     end
+-- end)()
+-- new.state = (function()
+--     local index = 0
+--     ---@class state
+--     ---@field char string? The character that the state accepts
+--     ---@field index integer The index of the state
+--     ---@field [1] state? The first next state
+--     ---@field [2] state? The second next state
+--     local mt = {
+--         ---Add an edge to the state
+--         ---@param self state
+--         ---@param state state
+--         add_edge = function(self, state)
+--             self[#self + 1] = state
+--         end,
+--         ---Get transiton string for digraph
+--         ---@param self state
+--         ---@param result queue? the result for the transition
+--         get_transition = function(self, result, visited)
+--             visited = visited or {}
+
+--             if visited[self.index] then
+--                 return
+--             else
+--                 visited[self.index] = true
+--             end
+
+--             result = result or new.queue()
+--             for i = 1, #self do
+--                 result:push(string.format('%s -> %s [label="%s"]', self.index, self[i].index, self.char))
+--                 self[i]:get_transition(result, visited)
+--             end
+
+--             return table.concat(result)
+--         end,
+
+--         ---return all states that can be reached from this state via epsilon transition
+--         ---@param self state
+--         ---@return queue<state>
+--         get_epsilon = function(self)
+--             local result = new.queue()
+
+--             local worklist = new.stack()
+--             worklist:push(self)
+
+--             while not worklist:empty() do
+--                 local state = worklist:pop()
+--                 result:push(state)
+--                 if state.char == epsilon then
+--                     for i = 1, #state do
+--                         worklist:push(state[i])
+--                     end
+--                 end
+--             end
+
+--             return result
+--         end,
+--     }
+--     mt.__index = mt
+
+
+--     ---@param opts { start: boolean?, final: boolean?, [1]: state?, [2]: state?, char: string?}
+--     ---@return state
+--     return function(opts)
+--         index = index + 1
+
+--         return setmetatable({
+--             char = opts.char,
+--             index = index,
+--             [1] = opts[1],
+--             [2] = opts[2],
+--         }, mt)
+--     end
+-- end)()
 
 return new
