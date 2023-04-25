@@ -1,11 +1,23 @@
-// Start State: 3
-// Final State: 4
+// Start State: 13
+// Final State: 14
 digraph {
 rankdir = LR
-3 -> 1 [label="ε"]
-1 -> 2 [label="b"]
-2 -> 4 [label="ε"]
-3 -> 1 [label="ε"]
+14 [peripheries=2]
 1 -> 2 [label="a"]
-2 -> 4 [label="ε"]
+3 -> 4 [label="b"]
+5 -> 6 [label="c"]
+9 -> 10 [label="d"]
+2 -> 14 [style=dotted, label="ε"]
+4 -> 11 [style=dotted, label="ε"]
+6 -> 8 [style=dotted, label="ε"]
+6 -> 5 [style=dotted, label="ε"]
+7 -> 5 [style=dotted, label="ε"]
+7 -> 8 [style=dotted, label="ε"]
+8 -> 12 [style=dotted, label="ε"]
+10 -> 12 [style=dotted, label="ε"]
+11 -> 9 [style=dotted, label="ε"]
+11 -> 7 [style=dotted, label="ε"]
+12 -> 14 [style=dotted, label="ε"]
+13 -> 3 [style=dotted, label="ε"]
+13 -> 1 [style=dotted, label="ε"]
 }

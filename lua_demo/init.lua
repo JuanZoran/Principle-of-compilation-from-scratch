@@ -76,7 +76,6 @@ end
 ---@param postfix_queue queue
 ---@return nfa
 local function toNFA(postfix_queue)
-    local epsilon = 'ε'
     local nfa = new.nfa()
     local st = new.stack()
     local strategy = {
@@ -85,35 +84,33 @@ local function toNFA(postfix_queue)
             local new_start, new_final = unpack(st:pop())
             local old_start, old_final = unpack(st:pop())
 
-            nfa:add_transition(old_final, new_start, epsilon)
+            nfa:add_epsilon_transition(old_final, new_start)
             st:push { old_start, new_final }
         end,
-
         ---Kleene star the nfa
         ['*'] = function()
             local old_start, old_final = unpack(st:pop())
             local new_start, new_final = nfa:new_state(), nfa:new_state()
 
-            nfa:add_transition(new_start, old_start, epsilon)
-            nfa:add_transition(old_final, new_final, epsilon)
+            nfa:add_epsilon_transition(new_start, old_start)
+            nfa:add_epsilon_transition(old_final, new_final)
 
-            nfa:add_transition(old_final, old_start, epsilon)
-            nfa:add_transition(new_start, new_final, epsilon)
+            nfa:add_epsilon_transition(old_final, old_start)
+            nfa:add_epsilon_transition(new_start, new_final)
 
             st:push { new_start, new_final }
         end,
-
         ---Union the nfa with another nfa
         ['|'] = function()
             local new_start, new_final = nfa:new_state(), nfa:new_state()
             local start1, final1 = unpack(st:pop())
             local start2, final2 = unpack(st:pop())
 
-            nfa:add_transition(new_start, start1, epsilon)
-            nfa:add_transition(new_start, start2, epsilon)
+            nfa:add_epsilon_transition(new_start, start1)
+            nfa:add_epsilon_transition(new_start, start2)
 
-            nfa:add_transition(final1, new_final, epsilon)
-            nfa:add_transition(final2, new_final, epsilon)
+            nfa:add_epsilon_transition(final1, new_final)
+            nfa:add_epsilon_transition(final2, new_final)
 
             st:push { new_start, new_final }
         end,
@@ -187,18 +184,79 @@ end
 
 -- Convert Minimized DFA into DFA table
 
+
+local args_opts = {
+    [{
+        '-o',
+        '--output',
+    }] = 'output file',
+    [{
+        '-h',
+        '--help',
+        no_arg = true,
+    }] = 'show help',
+    [{
+        '-f',
+        '-format',
+    }] = 'output format',
+    [{
+        '-s',
+        '--string',
+    }] = 'input string',
+}
+
+local function show_help()
+    print(green 'Usage: lua regex.lua [options?] [regex?]')
+    print ''
+    print 'Options:'
+    for k, v in pairs(args_opts) do
+        print(([[%5s %10s      %s]]):format(k[1], k[2], v))
+    end
+
+    os.exit()
+end
+
+local function parse_args()
+    local args = {}
+    for i, a in ipairs(arg) do
+        if a:sub(1, 1) == '-' then
+            local opt = args_opts[a]
+            if not opt then
+                print(('Invalid option : %s'):format(a))
+                os.exit()
+            end
+
+            if opt.no_arg then
+                args[opt] = true
+            else
+                args[opt] = arg[i + 1]
+                i = i + 1
+            end
+        else
+            show_help()
+        end
+    end
+
+    return args
+end
+
+local result = parse_args()
+
+--- TODO : handle args
+
 -- io.write(green(('请输入正则表达式 : ')))
+
 local RE = io.read()
 
 -- local q = pre_process(RE)
-print '- 输入字符串 :'
-print(RE)
-print ''
+-- print '- 输入字符串 :'
+-- print(RE)
+-- print ''
 local preprocess = pre_process(RE)
-print '- 预处理并转成后缀表达式 :'
-print(table.concat(preprocess))
-print ''
+-- print '- 预处理并转成后缀表达式 :'
+-- print(table.concat(preprocess))
+-- print ''
 local nfa = toNFA(preprocess)
-print '- 构建得到NFA :'
-print ''
+-- print '- 构建得到NFA :'
+-- print ''
 print(nfa:to_digraph())

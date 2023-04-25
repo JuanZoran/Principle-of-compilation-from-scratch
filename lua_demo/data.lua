@@ -16,14 +16,12 @@ new.stack = (function()
             self.size = size - 1
             return value
         end,
-
         ---Peek the top element of the stack
         ---@param self stack
         ---@return any # The top element
         top = function(self)
             return self[self.size]
         end,
-
         ---Push an element into the stack
         ---@param self stack
         ---@param value any _ The element to push
@@ -31,14 +29,12 @@ new.stack = (function()
             self.size = self.size + 1
             self[self.size] = value
         end,
-
         ---Check if the stack is empty
         ---@param self stack
         ---@return boolean @True if the stack is empty
         empty = function(self)
             return self.size == 0
         end,
-
         ---Clear the stack
         ---@param self stack
         clear = function(self)
@@ -95,7 +91,6 @@ new.queue = (function()
             self.size = self.size + 1
             self[self.size] = value
         end,
-
         ---Check if the queue is empty
         empty = function(self)
             return self.begin - 1 == self.size
@@ -135,6 +130,7 @@ new.nfa = (function()
     ---@field start integer The start state
     ---@field final integer The final state
     ---@field transitions table<integer, table<string, integer>> The transitions table
+    ---@field epsilon_transitions table<integer, integer[]> The transitions table
     ---@field size integer The state count of the nfa
     local mt = {
         ---Add a transition to the nfa
@@ -146,9 +142,25 @@ new.nfa = (function()
             assert(from <= self.size and to <= self.size, 'Invalid state')
 
             local transitions = self.transitions
+            if transitions[from][char] then
+                error(([[
+                want add transition: %d -> %d
+                there is an edge: %d -> %d,
+                ]]):format(from, to, from, transitions[from][char]))
+            end
             transitions[from][char] = to
         end,
+        ---Add a transition to the nfa
+        ---@param self nfa
+        ---@param from integer
+        ---@param to integer
+        add_epsilon_transition = function(self, from, to)
+            assert(from <= self.size and to <= self.size, 'Invalid state')
 
+            local trans = self.epsilon_transitions[from]
+
+            trans[#trans + 1] = to
+        end,
         ---Add a state to the nfa
         ---@param self nfa
         ---@return integer @ The index of the new state
@@ -157,8 +169,6 @@ new.nfa = (function()
             self.transitions[self.size] = {}
             return self.size
         end,
-
-
         ---Return the string of dot language that represents the nfa
         ---@param self nfa
         ---@return string
@@ -183,6 +193,12 @@ new.nfa = (function()
                 end
             end
 
+            for from, tos in pairs(self.epsilon_transitions) do
+                for _, to in ipairs(tos) do
+                    result:push(from .. ' -> ' .. to .. ' [style=dotted, label="ε"]')
+                end
+            end
+
             result:push '}'
             result:push '```'
 
@@ -201,10 +217,24 @@ new.nfa = (function()
             start = 0,
             final = 0,
             transitions = {},
+            epsilon_transitions = new.empty_list(),
         }, mt)
     end
 end)()
 
+
+new.empty_list = (function()
+    local mt = {
+        __index = function(tbl, key)
+            tbl[key] = {}
+            return tbl[key]
+        end,
+    }
+
+    return function()
+        return setmetatable({}, mt)
+    end
+end)()
 
 -- INFO : this version build a nfa via build lots of states tree
 -- new.nfa = (function()
