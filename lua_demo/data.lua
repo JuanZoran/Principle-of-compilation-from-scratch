@@ -1,5 +1,44 @@
 local new = {}
 
+
+---Join tables
+---@param tables any[]
+local function join(tables)
+    local result = {}
+
+    for _, v in ipairs(tables) do
+        if type(v) == 'table' then
+            for _, _v in ipairs(v) do
+                result[#result + 1] = _v
+            end
+        else
+            result[#result + 1] = v
+        end
+    end
+
+    return result
+end
+
+
+new.state_set = (function()
+    local concat = table.concat
+    local mt = {
+        __newindex = function(tbl, key, value)
+            assert(type(key) == 'table', 'this is a special set for states')
+            rawset(tbl, concat(key), value)
+        end,
+        __index = function(tbl, key)
+            assert(type(key) == 'table', 'this is a special set for states')
+            return tbl[concat(key)]
+        end,
+    }
+
+    mt.__index = mt
+    return function()
+        return setmetatable({}, mt)
+    end
+end)()
+
 new.stack = (function()
     ---@class stack<T>: { [integer]: T}
     ---@field size integer
@@ -112,16 +151,37 @@ end)()
 
 new.dfa = (function()
     ---@class dfa
+    ---@field start integer The start state
+    ---@field final integer[] The final state set
+    ---@field transitions table<integer, table<string, integer>> The transitions table
+    ---@field size integer The state count of the dfa
     local mt = {
+        ---Add a transition to the dfa
+        ---@param self dfa
+        ---@param from integer
+        ---@param to integer
+        ---@param char string
+        add_transition = function(self, from, to, char)
+            assert(from <= self.size and to <= self.size, 'Invalid state')
 
+            assert(not self.transitions[from][char], ([[
+                want to add transition: %d -> %d
+                there is an edge: %d -> %d,
+                ]]):format(from, to, from, self.transitions[from][char]))
+
+            self.transitions[from][char] = to
+        end,
     }
     mt.__index = mt
 
     ---Nfa constructor
-    ---@param origin nfa
     ---@return dfa
-    return function(origin)
-        return setmetatable({}, mt)
+    return function()
+        return setmetatable({
+            start = 1,
+            final = {},
+            transitions = new.empty_list(),
+        }, mt)
     end
 end)()
 
@@ -142,12 +202,11 @@ new.nfa = (function()
             assert(from <= self.size and to <= self.size, 'Invalid state')
 
             local transitions = self.transitions
-            if transitions[from][char] then
-                error(([[
+            assert(not transitions[from][char], ([[
                 want add transition: %d -> %d
                 there is an edge: %d -> %d,
                 ]]):format(from, to, from, transitions[from][char]))
-            end
+
             transitions[from][char] = to
         end,
         ---Add a transition to the nfa
@@ -204,6 +263,61 @@ new.nfa = (function()
 
             return table.concat(result, '\n')
         end,
+        ---Get all the input character in the nfa
+        ---@param self nfa
+        ---@return table
+        get_char_set = function(self)
+            local result = {}
+            for _, tos in ipairs(self.transitions) do
+                for char, _ in pairs(tos) do
+                    result[char] = true
+                end
+            end
+            return result
+        end,
+        ---convert a nfa to dfa
+        ---@param self nfa
+        to_dfa = function(self)
+            local dfa        = new.dfa()
+            -- local worklist   = new.queue()
+            local dfa_states = new.state_set()
+
+
+            local q0       = join {
+                self.start,
+                self.epsilon_transitions[self.start],
+            }
+
+            local worklist = {
+            }
+
+
+            --- FIXME :
+            dfa_states[q0] = true
+            worklist:push(q0)
+
+            ---@param states integer[] the states set
+            local function handle(states)
+                -- TODO : Check all character in char_set and if there is a new state
+                for char, _ in pairs(self:get_char_set()) do
+                    local temp = {}
+
+                    if not dfa_states[temp] then
+                        dfa_states[states] = true
+                        -- local new_state = dfa:new_state()
+
+                        --- FIXME :
+                        -- dfa:add_transition(states, new_state, char)
+                    end
+                end
+            end
+
+            while not worklist:empty() do
+                handle(worklist:pop())
+            end
+
+            return dfa
+        end,
     }
 
 
@@ -216,7 +330,7 @@ new.nfa = (function()
             size = 0,
             start = 0,
             final = 0,
-            transitions = {},
+            transitions = new.empty_list(),
             epsilon_transitions = new.empty_list(),
         }, mt)
     end

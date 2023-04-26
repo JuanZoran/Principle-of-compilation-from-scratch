@@ -239,7 +239,6 @@ local function parse_args()
 
     return args
 end
-
 local result = parse_args()
 
 --- TODO : handle args

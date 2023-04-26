@@ -1,30 +1,30 @@
 -- write some utility functions to print colorful text
 -- I need: green yellow red blue magenta cyan white
-function _G.green(text)
+function string.green(text)
     return '\27[32m' .. text .. '\27[0m'
 end
 
-function _G.yellow(text)
+function string.yellow(text)
     return '\27[33m' .. text .. '\27[0m'
 end
 
-function _G.red(text)
+function string.red(text)
     return '\27[31m' .. text .. '\27[0m'
 end
 
-function _G.blue(text)
+function string.blue(text)
     return '\27[34m' .. text .. '\27[0m'
 end
 
-function _G.magenta(text)
+function string.magenta(text)
     return '\27[35m' .. text .. '\27[0m'
 end
 
-function _G.cyan(text)
+function string.cyan(text)
     return '\27[36m' .. text .. '\27[0m'
 end
 
-function _G.white(text)
+function string.white(text)
     return '\27[37m' .. text .. '\27[0m'
 end
 
@@ -41,5 +41,6 @@ local function print_table(tbl, indent)
     end
     print(indent .. '}')
 end
+
 
 _G.pretty_print_table = print_table
