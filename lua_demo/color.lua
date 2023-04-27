@@ -28,13 +28,13 @@ function string.white(text)
     return '\27[37m' .. text .. '\27[0m'
 end
 
-local function print_table(tbl, indent)
+function _G.pretty_print_table(tbl, indent)
     indent = indent or ''
     print(indent .. '{')
     for k, v in pairs(tbl) do
         if type(v) == 'table' then
             print(indent .. '  ' .. k .. ' = ')
-            print_table(v, indent .. '  ')
+            pretty_print_table(v, indent .. '  ')
         else
             print(indent .. '  ' .. k .. ' = ' .. tostring(v))
         end
@@ -42,5 +42,29 @@ local function print_table(tbl, indent)
     print(indent .. '}')
 end
 
+local indent_t = '    '
+---Inspect a value
+---@param value any
+---@return string
+function _G.inspect(value, indent)
+    indent = indent or ''
+    local t = type(value)
 
-_G.pretty_print_table = print_table
+    if t == 'table' then
+        local lines = {}
+        for k, v in pairs(value) do
+            local key = (type(k) == 'number') and '[' .. k .. ']' or k
+            table.insert(lines, indent .. indent_t .. key .. ' = ' .. inspect(v, indent .. indent_t))
+        end
+        return '{\n' .. table.concat(lines, ',\n') .. '\n' .. indent .. '}'
+
+    elseif t == 'string' then
+        return string.format('%q', value)
+
+    elseif t == 'number' or t == 'boolean' or t == 'nil' then
+        return tostring(value)
+
+    else
+        return '<' .. t .. '>'
+    end
+end

@@ -1,5 +1,23 @@
 require 'color'
+require 'args'
 local new = require 'data'
+
+---print debug message
+---@param message any
+---@param desc string
+---@param color string?
+_G.debug = function(message, desc, color)
+    if args.debug then
+        color = color or 'yellow'
+        message = inspect(message)
+
+        print(desc:magenta())
+        print(message[color](message))
+        print ''
+    end
+end
+
+
 local sub = string.sub
 local priority = {
     ['('] = 1,
@@ -19,10 +37,12 @@ local pre_process = function(str)
     -- INFO : Add concat operator
     local q = new.queue()
     local concat_operator = '^'
+
     local function should_concat()
         local back = q:back()
-        return not priority[back] or back == '*'
+        return not priority[back] or back == '*' or back == ')'
     end
+
 
     for i = 1, #str do
         local char = sub(str, i, i)
@@ -130,12 +150,79 @@ local function toNFA(postfix_queue)
         end
     end
 
-    assert(st.size == 1, 'Invalid regular expression')
+
+    if st.size ~= 1 then
+        pretty_print_table(st)
+        error 'Invalid regular expression'
+    end
+
+    -- assert(st.size == 1, 'Invalid regular expression')
     nfa.start, nfa.final = unpack(st:top())
     return nfa
 end
 
 
+-- Convert NFA into DFA
+
+
+-- Convert DFA into Minimized DFA
+
+
+-- Convert Minimized DFA into DFA table
+
+local RE
+if args.string then
+    RE = args.string
+else
+    io.write(('请输入正则表达式 : '):green())
+    RE = io.read()
+end
+
+
+local postfix_queue = pre_process(RE)
+local postfix = table.concat(postfix_queue)
+local nfa = toNFA(postfix_queue)
+
+
+local file
+local write = function(str, color)
+    if file then
+        file:write(str .. '\n')
+    else
+        if color then
+            str = str[color](str)
+        end
+        print(str)
+    end
+end
+
+
+if args.output then
+    if not args.append then
+        pcall(os.remove, args.output)
+    end
+
+    file = io.open(args.output, 'a')
+    assert(file, 'Can not open file ' .. args.output)
+end
+
+write('- 正则表达式', 'green')
+write ''
+write(RE, 'blue')
+write ''
+write('- 后缀表达式', 'green')
+write ''
+write(postfix, 'blue')
+write ''
+write('- 构建得到NFA', 'green')
+write ''
+write(nfa:to_digraph(), 'blue')
+write ''
+write('- 构建得到DFA :', 'green')
+write(nfa:to_dfa():to_digraph(), 'blue')
+
+
+if file then file:close() end
 -- INFO : This Version should be more efficient
 -- -- Convert Postfix expression into NFA
 -- ---@param postfix_queue queue
@@ -174,88 +261,3 @@ end
 --     assert(st.size == 1, 'Invalid regular expression')
 --     return st:top()
 -- end
-
-
--- Convert NFA into DFA
-
-
--- Convert DFA into Minimized DFA
-
-
--- Convert Minimized DFA into DFA table
-
-
-local args_opts = {
-    [{
-        '-o',
-        '--output',
-    }] = 'output file',
-    [{
-        '-h',
-        '--help',
-        no_arg = true,
-    }] = 'show help',
-    [{
-        '-f',
-        '-format',
-    }] = 'output format',
-    [{
-        '-s',
-        '--string',
-    }] = 'input string',
-}
-
-local function show_help()
-    print(green 'Usage: lua regex.lua [options?] [regex?]')
-    print ''
-    print 'Options:'
-    for k, v in pairs(args_opts) do
-        print(([[%5s %10s      %s]]):format(k[1], k[2], v))
-    end
-
-    os.exit()
-end
-
-local function parse_args()
-    local args = {}
-    for i, a in ipairs(arg) do
-        if a:sub(1, 1) == '-' then
-            local opt = args_opts[a]
-            if not opt then
-                print(('Invalid option : %s'):format(a))
-                os.exit()
-            end
-
-            if opt.no_arg then
-                args[opt] = true
-            else
-                args[opt] = arg[i + 1]
-                i = i + 1
-            end
-        else
-            show_help()
-        end
-    end
-
-    return args
-end
-local result = parse_args()
-
---- TODO : handle args
-
--- io.write(green(('请输入正则表达式 : ')))
-
-local RE = io.read()
-
--- local q = pre_process(RE)
--- print '- 输入字符串 :'
--- print(RE)
--- print ''
-local preprocess = pre_process(RE)
--- print '- 预处理并转成后缀表达式 :'
--- print(table.concat(preprocess))
--- print ''
-local nfa = toNFA(preprocess)
--- print '- 构建得到NFA :'
--- print ''
-print(nfa:to_digraph())

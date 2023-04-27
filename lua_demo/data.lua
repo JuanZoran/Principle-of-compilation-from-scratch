@@ -1,6 +1,5 @@
 local new = {}
 
-
 ---Join tables
 ---@param tables any[]
 local function join(tables)
@@ -22,20 +21,37 @@ end
 
 new.state_set = (function()
     local concat = table.concat
+    ---@class state_set
+    ---@field size integer The size of the set
     local mt = {
-        __newindex = function(tbl, key, value)
-            assert(type(key) == 'table', 'this is a special set for states')
-            rawset(tbl, concat(key), value)
+        ---insert states into the set
+        ---@param self state_set
+        ---@param states integer[]
+        ---@return integer @the index of the states
+        insert = function(self, states)
+            assert(type(states) == 'table', 'this is special set for states')
+            self.size = self.size + 1
+
+            -- pretty_print_table(states)
+            self[concat(states)] = self.size -- state index
+            return self.size
         end,
-        __index = function(tbl, key)
-            assert(type(key) == 'table', 'this is a special set for states')
-            return tbl[concat(key)]
+
+        ---get the index of the states if not exist then return nil
+        ---@param self state_set
+        ---@param states integer[]
+        ---@return integer|nil
+        index = function(self, states)
+            assert(type(states) == 'table', 'this is special set for states')
+            return self[concat(states)]
         end,
     }
 
     mt.__index = mt
     return function()
-        return setmetatable({}, mt)
+        return setmetatable({
+            size = 0,
+        }, mt)
     end
 end)()
 
@@ -111,6 +127,7 @@ new.queue = (function()
             self.begin  = begin + 1
             return value
         end,
+
         ---Peek the first element of the queue
         ---@param self queue
         ---@return `T` # The first element
@@ -123,6 +140,7 @@ new.queue = (function()
         back = function(self)
             return self[self.size]
         end,
+
         ---Push an element into the queue
         ---@param self queue
         ---@param value `T` The element to Push
@@ -130,6 +148,7 @@ new.queue = (function()
             self.size = self.size + 1
             self[self.size] = value
         end,
+
         ---Check if the queue is empty
         empty = function(self)
             return self.begin - 1 == self.size
@@ -162,14 +181,49 @@ new.dfa = (function()
         ---@param to integer
         ---@param char string
         add_transition = function(self, from, to, char)
-            assert(from <= self.size and to <= self.size, 'Invalid state')
+            -- assert(from <= self.size and to <= self.size, 'Invalid state')
 
-            assert(not self.transitions[from][char], ([[
+            local transitions = self.transitions
+            if transitions[from][char] then
+                error(([[
                 want to add transition: %d -> %d
                 there is an edge: %d -> %d,
                 ]]):format(from, to, from, self.transitions[from][char]))
+            end
 
-            self.transitions[from][char] = to
+            transitions[from][char] = to
+        end,
+
+        ---Return the string of dot language that represents the nfa
+        ---@param self dfa
+        ---@return string
+        to_digraph = function(self)
+            local result = new.queue()
+            result:push '```dot'
+
+            result:push 'digraph {'
+            result:push 'rankdir = LR'
+
+            -- pretty_print_table(self.transitions)
+            -- NOTE : special node style
+            -- result:push 'edge [color=green]'
+            -- result:push(self.start.index .. ' [color=yellow]')
+            -- result:push(self.final.index .. ' [color=green, peripheries=2]')
+            for _, final in ipairs(self.final) do
+                result:push(final .. ' [peripheries=2]')
+            end
+
+
+            for from, tos in ipairs(self.transitions) do
+                for char, to in pairs(tos) do
+                    result:push(from .. ' -> ' .. to .. ' [label="' .. char .. '"]')
+                end
+            end
+
+            result:push '}'
+            result:push '```'
+
+            return table.concat(result, '\n')
         end,
     }
     mt.__index = mt
@@ -202,10 +256,12 @@ new.nfa = (function()
             assert(from <= self.size and to <= self.size, 'Invalid state')
 
             local transitions = self.transitions
-            assert(not transitions[from][char], ([[
-                want add transition: %d -> %d
+            if transitions[from][char] then
+                error(([[
+                want to add transition: %d -> %d
                 there is an edge: %d -> %d,
-                ]]):format(from, to, from, transitions[from][char]))
+                ]]):format(from, to, from, self.transitions[from][char]))
+            end
 
             transitions[from][char] = to
         end,
@@ -228,6 +284,7 @@ new.nfa = (function()
             self.transitions[self.size] = {}
             return self.size
         end,
+
         ---Return the string of dot language that represents the nfa
         ---@param self nfa
         ---@return string
@@ -241,9 +298,7 @@ new.nfa = (function()
             result:push 'rankdir = LR'
 
             -- NOTE : special node style
-            -- result:push 'edge [color=green]'
-            -- result:push(self.start.index .. ' [color=yellow]')
-            -- result:push(self.final.index .. ' [color=green, peripheries=2]')
+            result:push(self.start .. ' [color=green]')
             result:push(self.final .. ' [peripheries=2]')
 
             for from, tos in ipairs(self.transitions) do
@@ -275,40 +330,100 @@ new.nfa = (function()
             end
             return result
         end,
+
+        ---Get all of the states that can be reached from the given state via the given char
+        ---@param self nfa
+        ---@param state integer
+        ---@return integer[]|nil @ The states that can be reached
+        reached_states = function(self, state)
+            assert(state <= self.size, 'Invalid state')
+            local st = new.stack()
+            local result = {}
+            st:push(state)
+            local check = function(s)
+                if not s then return end
+                if not result[s] then
+                    result[s] = true
+                    st:push(s)
+                end
+            end
+
+            while not st:empty() do
+                local s = st:pop()
+                check(s)
+                local epsilon_transitions = self.epsilon_transitions[s]
+                for _, v in ipairs(epsilon_transitions) do
+                    check(v)
+                end
+            end
+
+            local states = {}
+            for k, _ in pairs(result) do
+                states[#states + 1] = k
+            end
+
+            return #states > 0 and states or nil
+        end,
+
         ---convert a nfa to dfa
         ---@param self nfa
         to_dfa = function(self)
-            local dfa        = new.dfa()
-            -- local worklist   = new.queue()
-            local dfa_states = new.state_set()
+            local dfa      = new.dfa()
+            local worklist = new.queue()
+            local set      = new.state_set()
 
 
-            local q0       = join {
+            local q0 = join {
                 self.start,
                 self.epsilon_transitions[self.start],
             }
 
-            local worklist = {
-            }
-
-
             --- FIXME :
-            dfa_states[q0] = true
             worklist:push(q0)
+            set:insert(q0)
+
+            local final = self.final
+            local check_final = function(list)
+                for _, v in ipairs(list) do
+                    if v == final then
+                        table.insert(dfa.final, set:index(list))
+                    end
+                end
+            end
+
+            check_final(q0)
+            local char_set = self:get_char_set()
+            debug(char_set, 'char_set')
 
             ---@param states integer[] the states set
             local function handle(states)
                 -- TODO : Check all character in char_set and if there is a new state
-                for char, _ in pairs(self:get_char_set()) do
+                local from = set:index(states)
+                assert(from)
+
+                for char, _ in pairs(char_set) do
                     local temp = {}
 
-                    if not dfa_states[temp] then
-                        dfa_states[states] = true
-                        -- local new_state = dfa:new_state()
-
-                        --- FIXME :
-                        -- dfa:add_transition(states, new_state, char)
+                    -- TODO : Get all the states that can be reached by char
+                    for _, state in ipairs(states) do
+                        local to = self.transitions[state][char]
+                        if to then
+                            temp = join { temp, self:reached_states(to) }
+                        end
                     end
+
+                    local to = set:index(temp)
+                    if #temp > 0 and not to then
+                        debug(temp, 'new state')
+
+                        to = set:insert(temp)
+                        worklist:push(temp)
+
+                        check_final(temp)
+                    end
+
+                    ---@cast to integer
+                    dfa:add_transition(from, to, char)
                 end
             end
 
