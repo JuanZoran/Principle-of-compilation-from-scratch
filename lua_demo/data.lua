@@ -373,10 +373,7 @@ new.nfa = (function()
             local set      = new.state_set()
 
 
-            local q0 = join {
-                self.start,
-                self.epsilon_transitions[self.start],
-            }
+            local q0 = self:reached_states(self.start)
 
             --- FIXME :
             worklist:push(q0)
@@ -394,6 +391,7 @@ new.nfa = (function()
             check_final(q0)
             local char_set = self:get_char_set()
             debug(char_set, 'char_set')
+            debug(q0, 'Dfa start state')
 
             ---@param states integer[] the states set
             local function handle(states)
@@ -404,7 +402,6 @@ new.nfa = (function()
                 for char, _ in pairs(char_set) do
                     local temp = {}
 
-                    -- TODO : Get all the states that can be reached by char
                     for _, state in ipairs(states) do
                         local to = self.transitions[state][char]
                         if to then
@@ -412,6 +409,7 @@ new.nfa = (function()
                         end
                     end
 
+                    debug(temp, 'handle state')
                     local to = set:index(temp)
                     if #temp > 0 and not to then
                         debug(temp, 'new state')

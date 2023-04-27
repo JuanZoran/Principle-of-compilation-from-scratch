@@ -1,6 +1,6 @@
 .PHONY: test, all
 
-TESTS = 'a|b' 'a*' 'ab' '(a|b)c' '(a|b)*c'
+TESTS = 'a|b' 'a*' 'ab' '(a|b)c' '(a|b)*c' '(ab)*|c'
 
 DBEUG_STR = (a|b)*
 

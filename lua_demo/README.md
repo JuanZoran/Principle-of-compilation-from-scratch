@@ -181,5 +181,61 @@ rankdir = LR
 ```dot
 digraph {
 rankdir = LR
+4 [peripheries=2]
+1 -> 2 [label="b"]
+1 -> 3 [label="a"]
+1 -> 4 [label="c"]
+2 -> 2 [label="b"]
+2 -> 3 [label="a"]
+2 -> 4 [label="c"]
+3 -> 2 [label="b"]
+3 -> 3 [label="a"]
+3 -> 4 [label="c"]
+}
+```
+# (ab)*|c
+- 正则表达式
+
+(ab)*|c
+
+- 后缀表达式
+
+ab^*c|
+
+- 构建得到NFA
+
+```dot
+// Start State: 9
+// Final State: 10
+digraph {
+rankdir = LR
+9 [color=green]
+10 [peripheries=2]
+1 -> 2 [label="a"]
+3 -> 4 [label="b"]
+7 -> 8 [label="c"]
+2 -> 3 [style=dotted, label="ε"]
+4 -> 6 [style=dotted, label="ε"]
+4 -> 1 [style=dotted, label="ε"]
+5 -> 1 [style=dotted, label="ε"]
+5 -> 6 [style=dotted, label="ε"]
+6 -> 10 [style=dotted, label="ε"]
+8 -> 10 [style=dotted, label="ε"]
+9 -> 7 [style=dotted, label="ε"]
+9 -> 5 [style=dotted, label="ε"]
+}
+```
+
+- 构建得到DFA :
+```dot
+digraph {
+rankdir = LR
+1 [peripheries=2]
+3 [peripheries=2]
+4 [peripheries=2]
+1 -> 2 [label="a"]
+1 -> 3 [label="c"]
+2 -> 4 [label="b"]
+4 -> 2 [label="a"]
 }
 ```
