@@ -3,6 +3,7 @@ local new = {}
 ---Join tables
 ---@param tables any[]
 local function join(tables)
+    -- assert(#tables > 1)
     local result = {}
 
     for _, v in ipairs(tables) do
@@ -47,12 +48,10 @@ new.simple_set = (function()
     mt.__index = mt
 
     ---@param get_key fun(states: any[]): integer|string
-    ---@param insert_hook function?
     ---@return state_set
-    return function(get_key, insert_hook)
+    return function(get_key)
         return setmetatable({
             get_key = get_key,
-            insert_hook = insert_hook,
             size = 0,
         }, mt)
     end
@@ -187,6 +186,8 @@ new.dfa = (function()
             if strict == nil then strict = true end
 
             local transitions = self.transitions
+            debug(from .. ' ' .. to .. ' ' .. char, 'DFA add_transition')
+
             if strict and transitions[from][char] then
                 error(([[
                 want to add transition: %d -> %d
@@ -217,7 +218,8 @@ new.dfa = (function()
             end
 
 
-            for from, tos in ipairs(self.transitions) do
+            debug(self.transitions, 'DFA [transitions]')
+            for from, tos in pairs(self.transitions) do
                 for char, to in pairs(tos) do
                     result:push(from .. ' -> ' .. to .. ' [label="' .. char .. '"]')
                 end
@@ -319,6 +321,7 @@ new.nfa = (function()
                 ]]):format(from, to, from, transitions[from][char]))
             end
 
+            debug(from .. ' ' .. to .. ' ' .. char, 'NFA add_transition')
             transitions[from][char] = to
         end,
 
@@ -458,30 +461,30 @@ new.nfa = (function()
             local function handle(states)
                 local from = set:index(states)
                 assert(from, 'want to index states:' .. inspect(states) .. '\nset:' .. inspect(set))
+                local transitions = self.transitions
 
                 for char, _ in pairs(char_set) do
-                    local temp = {}
-
+                    local next_states
                     for _, state in ipairs(states) do
-                        local to = self.transitions[state][char]
+                        local to = transitions[state][char]
                         if to then
-                            temp = join { temp, self:reached_states(to) }
+                            next_states = join { self:reached_states(to), next_states }
                         end
                     end
 
-                    debug(temp, 'handle state')
-                    local to = set:index(temp)
-                    if #temp > 0 and not to then
-                        debug(temp, 'new state')
+                    if next_states then
+                        -- debug(next_states, 'next_states')
+                        local to = set:index(next_states)
+                        if not to then
+                            to = set:insert(next_states)
+                            debug(next_states, 'DFA state[' .. to .. ']')
 
-                        to = set:insert(temp)
-                        worklist:push(temp)
+                            worklist:push(next_states)
+                            check_final(next_states)
+                        end
 
-                        check_final(temp)
+                        dfa:add_transition(from, to, char)
                     end
-
-                    ---@cast to integer
-                    dfa:add_transition(from, to, char)
                 end
             end
 
