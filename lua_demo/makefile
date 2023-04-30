@@ -17,6 +17,5 @@ test_all:
 		luajit init.lua -s "$$i" -a -o README.md; \
 	done
 
-
 debug:
 	luajit init.lua -s "$(DBEUG_STR)" -d

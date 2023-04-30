@@ -219,45 +219,10 @@ write ''
 write(nfa:to_digraph(), 'blue')
 write ''
 write('- 构建得到DFA :', 'green')
-write(nfa:to_dfa():to_digraph(), 'blue')
-
+local dfa = nfa:to_dfa()
+write(dfa:to_digraph(), 'blue')
+write ''
+write('- 最小化DFA:', 'green')
+write(dfa:minimal():to_digraph(), 'blue')
 
 if file then file:close() end
--- INFO : This Version should be more efficient
--- -- Convert Postfix expression into NFA
--- ---@param postfix_queue queue
--- ---@return nfa
--- local function toNFA(postfix_queue)
---     local st = new.stack()
---     local strategy = {
---         ['^'] = function()
---             local nfa1 = st:pop()
---             local nfa2 = st:pop()
-
---             st:push(nfa1:concat(nfa2))
---         end,
---         ['*'] = function()
---             st:top():closure()
---         end,
---         ['|'] = function()
---             local nfa1 = st:pop()
---             local nfa2 = st:pop()
-
---             st:push(nfa1:union(nfa2))
---         end,
---     }
-
-
---     while not postfix_queue:empty() do
---         local char = postfix_queue:pop()
---         local not_operator = not priority[char]
-
---         if not_operator then
---             st:push(new.nfa(char))
---         else
---             strategy[char]()
---         end
---     end
---     assert(st.size == 1, 'Invalid regular expression')
---     return st:top()
--- end
