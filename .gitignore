@@ -1,5 +1,5 @@
 .luarc.json
 
 # Xmake cache
-lexer_generator/.xmake/
-lexer_generator/build/
+cpp_lexer_generator/.xmake/
+cpp_lexer_generator/build/
