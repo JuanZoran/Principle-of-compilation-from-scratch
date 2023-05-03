@@ -1,6 +1,0 @@
-age>=45
-test ==cool
-fol == bar int a = 10
-
-char b = c char foo = bar
-intA = trsn

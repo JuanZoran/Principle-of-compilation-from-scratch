@@ -1,6 +1,0 @@
-[
-{
-  "directory": "/home/zoran/project/Cpp/project/Principle-of-compilation-from-scratch",
-  "arguments": ["/bin/gcc", "-c", "-m64", "-fvisibility=hidden", "-fvisibility-inlines-hidden", "-O3", "-Iinclude", "-DNDEBUG", "-o", "build/.objs/parser/linux/x86_64/release/src/main.cpp.o", "src/main.cpp"],
-  "file": "src/main.cpp"
-}]
